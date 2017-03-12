@@ -30,12 +30,7 @@ rule Register_SK:
     [ Fr(~SK) ]
     -->
     [ !Shared_Key($A,$S,~SK) ]
-/*
-//rule Get_SK:
-    [ !Shared_Key(A, S, SK)]
-    -->
-    [ Out(SK)]
-*/
+
 rule Reveal_SK:
     [ !Shared_Key(A, S, SK)]
     --[ SK_Reveal(A, S) ]->
@@ -54,7 +49,7 @@ rule Server_1:
       Fr(~N),
       !Shared_Key(A, S, K)
     ]  // 2. S -> A: Ns.T.S
-    --> //?
+    -->
     [ Server_1(~T),
     Out( <~N, ~T, S> ) ]
 
@@ -66,7 +61,7 @@ rule Client_2:
     ]  //3. A -> S: F(SK.T)
     -->
     [
-      Out( h( < SK,T> ) )
+      Out( h( < SK,T > ) )
     ]
 
 rule Server_2:
@@ -117,7 +112,8 @@ lemma session_key_setup_possible:
   " /* There is a trace satisfying all equality checks */
      (All x y #i. Eq(x,y) @ i ==> x = y)
   &  /* Session keys have been setup */
-     (Ex A S SK T #k.  Session(A, S, SK, T) @ k
+     (
+      Ex A S SK T #k.  Session(A, S, SK, T) @ k
       /* without having performed a long-term key reveal. */
       & not (Ex #r. SK_Reveal(A, S) @ r)
       )
