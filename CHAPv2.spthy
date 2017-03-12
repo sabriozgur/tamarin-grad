@@ -1,0 +1,84 @@
+theory CHAPv2
+begin
+
+/*
+We assume that the server B and client A share password k(A,B) in advance. The server and client generate nonces Nb and Na, respectively.
+  1. A -> B : A
+  2. B -> A : Nb
+  3. A -> B : Na,H(k(A,B),(Na,Nb,A))
+  4. B -> A : H(k(A,B),Na)
+
+*/
+
+// lowe
+functions: h/1
+
+rule Register_SK:
+    [ Fr(~SK_AB)]
+    -->
+    [ !Shared_Key($A, $B, ~SK_AB) ]
+
+rule Get_SK:
+    [ !Shared_Key(A, B, SK_AB) ]
+    -->
+    [ Out(SK_AB)]
+
+rule Reveal_SK:
+    [ !Shared_Key(A, B, SK_AB)]
+    --[ SK_Reveal(A,B) ]->
+    [ Out(SK_AB) ]
+
+rule Client_1: // Client is A, Server is B
+    [ !Shared_Key(A, B, SK_AB) ]
+    -->
+    [ Out(A),
+      Client_1(A,B,SK_AB)
+     ]
+
+rule Server_1:
+    [ In(A),
+      Fr(~Nb)
+    ]
+    -->
+    [ Out(~Nb)
+     ]
+
+rule Client_2:
+    [ In(Nb),
+      Fr(~Na),
+      Client_1(A,B,SK_AB)
+    ]
+    -->
+    [
+      Out(<~Na,h(<SK_AB,~Na,Nb,A>)>),
+      Client_2(~Na,Nb,A,B,SK_AB)
+    ]
+rule Server_2:
+    [ In(<Na,h(<SK_AB,Na,Nb,A>)>),
+      !Shared_Key(A, B, SK_AB)
+    ]
+    -->
+    [
+     Out(h(<SK_AB,Na>))
+    ]
+
+rule Client_3:
+    [ In(h(<SK_AB,Na>)),
+      Client_2(Na,Nb,A,B,SK_AB)]
+    --[ Secrecy(Na,Nb,A,B,SK_AB) ]->
+    []
+
+
+
+lemma SK_secrecy:
+    " /* It cannot be that a */
+    not(
+        Ex Na Nb A B SK_AB #i #j.
+            Secrecy( Na, Nb, A, B, SK_AB ) @ #i
+        & K(SK_AB) @ #j
+        & not( Ex #r. SK_Reveal(A,B) @r)
+    )
+    "
+
+
+end

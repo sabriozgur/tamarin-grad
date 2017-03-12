@@ -1,0 +1,57 @@
+theory APOP
+begin
+
+
+/*
+S -> C : Hello.Timestamp
+ C -> S : C.MD5(Timestamp.K_CS)
+ S -> C : Success
+*/
+
+functions: h/1
+
+rule Register_SK:
+    [ Fr(~SK)]
+    -->
+    [ !Shared_Key($S, $C, ~SK) ]
+
+rule Get_SK:
+    [ !Shared_Key(S, C, SK) ]
+    -->
+    [ Out(SK)]
+
+rule Reveal_SK:
+    [ !Shared_Key(S, C, SK)]
+    --[ SK_Reveal(S,C) ]->
+    [ Out(SK) ]
+
+rule Server_1:
+    [ Fr(~T) ]
+    -->
+    [ Out(<'Hello',~T>)]
+
+rule Client_1:
+    [ In(<'Hello',T>),
+      !Shared_Key(S,C,SK)
+    ]
+    -->
+    [ Out(<C,h(<T,SK>)>)]
+
+rule Server_2:
+    [ In(<C,h(<T,SK>)>),
+      !Shared_Key(S,C,SK)
+    ]
+    --[ Successful(S,C,T)]->
+    [ Out('Success') ]
+
+    lemma SK_secrecy:
+        " /* It cannot be that a */
+        not(
+            Ex C SK T #i #j.
+                Successful( S,C,T ) @ #i
+            & K(SK) @ #j
+            & not( Ex #r. SK_Reveal(S,C) @r)
+        )
+        "
+
+end
