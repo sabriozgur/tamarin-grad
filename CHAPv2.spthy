@@ -18,11 +18,6 @@ rule Register_SK:
     -->
     [ !Shared_Key($A, $B, ~SK_AB) ]
 
-rule Get_SK:
-    [ !Shared_Key(A, B, SK_AB) ]
-    -->
-    [ Out(SK_AB)]
-
 rule Reveal_SK:
     [ !Shared_Key(A, B, SK_AB)]
     --[ SK_Reveal(A,B) ]->
@@ -32,7 +27,7 @@ rule Client_1: // Client is A, Server is B
     [ !Shared_Key(A, B, SK_AB) ]
     -->
     [ Out(A),
-      Client_1(A,B,SK_AB)
+      Client_1(A, B, SK_AB)
      ]
 
 rule Server_1:
@@ -40,7 +35,8 @@ rule Server_1:
       Fr(~Nb)
     ]
     -->
-    [ Out(~Nb)
+    [ Out(~Nb),
+      Server_1(~Nb)
      ]
 
 rule Client_2:
@@ -54,31 +50,57 @@ rule Client_2:
       Client_2(~Na,Nb,A,B,SK_AB)
     ]
 rule Server_2:
-    [ In(<Na,h(<SK_AB,Na,Nb,A>)>),
-      !Shared_Key(A, B, SK_AB)
+    [ In( hashed ),
+    //In(<Na,h(<SK_AB,Na,Nb,A>)>),
+      !Shared_Key(A, B, SK_AB),
+      Server_1(Nb)
     ]
-    -->
+    --[ Eq1( snd(hashed), h( <SK_AB, fst(hashed), Nb, A> ) ),
+        Auth_Nb( A, B, SK_AB, Nb)
+    //Server side auth complete
+
+    ]->
     [
-     Out(h(<SK_AB,Na>))
+     Out(h(<SK_AB,fst(hashed)>))
     ]
 
 rule Client_3:
-    [ In(h(<SK_AB,Na>)),
+    [ In( hashed ),
+    //In(h(<SK_AB,Na>)),
       Client_2(Na,Nb,A,B,SK_AB)]
-    --[ Secrecy(Na,Nb,A,B,SK_AB) ]->
+    --[ Eq2( hashed, h( <SK_AB, Na> ) ), // client side auth complete
+        Auth_Na( A, B, SK_AB, Na),
+        Session(Na,Nb,A,B,SK_AB)
+        ]->
     []
 
+axiom Equality_Checks_Succeed1: "All x y #i. Eq1(x,y) @ i ==> x = y "
+axiom Equality_Checks_Succeed2: "All x y #i. Eq2(x,y) @ i ==> x = y "
 
 
 lemma SK_secrecy:
     " /* It cannot be that a */
     not(
         Ex Na Nb A B SK_AB #i #j.
-            Secrecy( Na, Nb, A, B, SK_AB ) @ #i
+            Session( Na, Nb, A, B, SK_AB ) @ #i
         & K(SK_AB) @ #j
         & not( Ex #r. SK_Reveal(A,B) @r)
     )
     "
 
+lemma Auth_on_Na:
+    "
+    (All A B SK_AB Na #i. Auth_Na(A, B, SK_AB, Na) @ #i
+        ==>
+            (All x y #j. Eq2(x,y) @j ==> x = y)
+    )
+    "
 
+lemma Auth_on_Nb:
+    "
+    ( All A B SK_AB Nb #i. Auth_Nb(A, B, SK_AB, Nb) @ #i
+        ==>
+            (All x y #j. Eq1(x,y) @j ==> x = y)
+    )
+    "
 end
