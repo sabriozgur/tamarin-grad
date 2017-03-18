@@ -1,7 +1,6 @@
 theory CramMD5
 begin
 
-
 /*
 Alice-Bob Notation:
  1. A -> S: A
@@ -18,12 +17,6 @@ Alice-Bob Notation:
       generated hash value.
 */
 
-/*
-VERY IMPORTANT NOTE!!!!!!!!!
-Lemma cannot detect the objects generated at the second step  [1] --[2]-> [3] of a rule
-while iterating back from an object at Lemma
-So we must not put them at step 2, if we are not using them directly at the lemma.
-*/
 functions: h/1
 
 rule Register_SK:
@@ -77,13 +70,8 @@ rule Server_2:
     ]->
     []
 
-
-
 axiom Equality_Checks_Succeed: "All x y #i. Eq(x,y) @ i ==> x = y "
 
-// cant ged rid of free bound warning
-// if i do i get another error
-// whats the difference between @i vs. @ #i
 lemma SK_secrecy:
     " /* It cannot be that a */
     not(
@@ -112,12 +100,10 @@ lemma session_key_setup_possible:
   " /* There is a trace satisfying all equality checks */
      (All x y #i. Eq(x,y) @ i ==> x = y)
   &  /* Session keys have been setup */
-     (
-      Ex A S SK T #k.  Session(A, S, SK, T) @ k
+     (Ex A S SK T #k.  Session(A, S, SK, T) @ k
       /* without having performed a long-term key reveal. */
       & not (Ex #r. SK_Reveal(A, S) @ r)
       )
    "
-
 
 end
