@@ -10,6 +10,11 @@ We assume that the server B and client A share password k(A,B) in advance. The s
 
 */
 
+
+/*
+Not sending k(A,B) at 3rd step, violates only the honest_key_setup lemma. Is this expected?
+*/
+
 // lowe
 functions: h/1
 
@@ -44,7 +49,7 @@ rule Client_2:
       Fr(~Na),
       Client_1(A,B,SK_AB)
     ]
-    -->
+    --[ Client_Answered(A, B, Nb, SK_AB) ]->
     [
       Out(<~Na,h(<SK_AB,~Na,Nb,A>)>),
       Client_2(~Na,Nb,A,B,SK_AB)
@@ -55,28 +60,27 @@ rule Server_2:
       !Shared_Key(A, B, SK_AB),
       Server_1(Nb)
     ]
-    --[ Eq1( snd(hashed), h( <SK_AB, fst(hashed), Nb, A> ) ),
-        Auth_Nb( A, B, SK_AB, Nb)
+    --[ Eq( snd(hashed), h( <SK_AB, fst(hashed), Nb, A> ) ),
+        Auth_Nb( A, B, SK_AB, Nb),
+        Server_Answered(A, B, fst(hashed), SK_AB)
     //Server side auth complete
-
     ]->
     [
-     Out(h(<SK_AB,fst(hashed)>))
+     Out(h(<fst(hashed), SK_AB>))
     ]
 
 rule Client_3:
     [ In( hashed ),
     //In(h(<SK_AB,Na>)),
       Client_2(Na,Nb,A,B,SK_AB)]
-    --[ Eq2( hashed, h( <SK_AB, Na> ) ), // client side auth complete
+    --[ Eq( hashed, h( <Na, SK_AB> ) ), // client side auth complete
         Auth_Na( A, B, SK_AB, Na),
         Session(Na,Nb,A,B,SK_AB)
         ]->
     []
 
-axiom Equality_Checks_Succeed1: "All x y #i. Eq1(x,y) @ i ==> x = y "
-axiom Equality_Checks_Succeed2: "All x y #i. Eq2(x,y) @ i ==> x = y "
-
+axiom Equality_Checks_Succeed1: "All x y #i. Eq(x,y) @ i ==> x = y "
+//axiom Equality_Checks_Succeed2: "All x y #i. Eq2(x,y) @ i ==> x = y "
 
 lemma SK_secrecy:
     " /* It cannot be that a */
@@ -87,20 +91,38 @@ lemma SK_secrecy:
         & not( Ex #r. SK_Reveal(A,B) @r)
     )
     "
-
+// Eq statements shouldnt be in lemmas ( except the honest setup lemma ) ?????
 lemma Auth_on_Na:
-    "
-    (All A B SK_AB Na #i. Auth_Na(A, B, SK_AB, Na) @ #i
+    " // A&B'
+    ( All A B SK_AB Na #i. Auth_Na(A, B, SK_AB, Na) @ #i
         ==>
-            (All x y #j. Eq2(x,y) @j ==> x = y)
+        (
+            (Ex #j. SK_Reveal(A, B) @ j & j < i)
+            | (Ex #r. Server_Answered(A, B, Na, SK_AB) @r )
+
+        )
+
     )
     "
 
 lemma Auth_on_Nb:
     "
-    ( All A B SK_AB Nb #i. Auth_Nb(A, B, SK_AB, Nb) @ #i
+    ( All A B SK_AB Nb #i. Auth_Nb  (A, B, SK_AB, Nb) @ #i
         ==>
-            (All x y #j. Eq1(x,y) @j ==> x = y)
+        (
+            (Ex #j. SK_Reveal(A, B) @ j & j < i)
+            | (Ex #r. Client_Answered(A, B, Nb, SK_AB) @r )
+        )
+    )
+    "
+
+lemma session_key_setup_possible:
+    exists-trace
+    "
+    (All x y #i. Eq(x,y) @ i ==> x = y)
+    &
+    ( Ex Na Nb A B SK_AB #r. Session( Na, Nb, A, B, SK_AB ) @ #r
+        & not( Ex #j. SK_Reveal(A, B) @j )
     )
     "
 end
