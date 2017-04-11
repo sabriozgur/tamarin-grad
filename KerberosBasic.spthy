@@ -1,0 +1,143 @@
+theory KerberosBasic
+begin
+
+
+builtins: hashing, asymmetric-encryption
+
+/*
+C: Client
+ A: Authentication Server
+ G: Ticket Granting Server
+ S: Server (that the client wants to talk to)
+
+ K_AB: key shared or intended to be shared between A and B
+       Initially shared: K_CA, K_AG, K_GS
+       Established during protocol: K_CG, K_CS
+
+
+ All things marked * are timestamp-related and will be simply replaced
+ with fresh text.
+
+
+ Macros:
+ Ticket_1 := { C,G, K_CG, Tstart*, Texpire* }K_AG
+ Ticket_2 := { C,S, K_CS, Tstart2*, Texpire2* }K_GS
+
+
+ 1. C -> A : C,G,Lifetime_1*,N_1
+ 2. A -> C : C, Ticket_1, { G, K_CG, Tstart*, Texpire*, N_1 }K_CA
+
+
+ 3. C -> G : S,Lifetime_2*,N_2,Ticket_1, { C,T* }K_CG
+ 4. G -> C : C, Ticket_2, { S, K_CS, Tstart2*, Texpire2*, N_2 }K_CG
+
+
+ 5. C -> S : Ticket_2, { C, T2* }K_CS
+ 6. S -> C : { T2* }K_CS
+
+*/
+rule Register_SK:
+  [ Fr(~Key_XY) ]
+  -->
+  [ !Shared($X, $Y, ~Key_XY)]
+/*
+rule Register_PreAG:
+  [ Fr(~Key_AG) ]
+  -->
+  [ !Shared_AG($A, $G, ~Key_AG)]
+
+rule Register_PreGS:
+  [ Fr(~Key_GS) ]
+  -->
+  [ !Shared_GS($G, $S, ~Key_GS)]
+*/
+rule Reveal_SK:
+  [ !Shared(X,Y,Key_XY)]
+  --[ SK_Reveal(X,Y)]->
+  [ Out(Key_XY)]
+
+rule Parties:
+  []
+  -->
+  [ !Parties($A,$C,$G,$S) ]
+
+rule Client_1: //C
+  [ Fr(~LifeTime_1),
+    Fr(~N_1),
+    !Parties(A,C,G,S)]
+  -->
+  [ Out(<C,G,~LifeTime_1, ~N_1>) ]
+
+rule AuthServ_1://A
+  let
+    Ticket_1 = aenc{C, G, ~Key_CG, ~Tstart, ~Texpire }Key_AG
+  in
+  [ Fr(~Tstart),
+    Fr(~Texpire),
+    Fr(~Key_CG),
+    !Shared(A, G, Key_AG),
+    !Shared(C, A, Key_CA),
+    In(<C, G, LifeTime_1, N_1>)
+  ]
+  -->
+  [
+    Out(<C, Ticket_1, aenc{G, ~Key_CG, ~Tstart, ~Texpire, N_1}Key_CA >)
+  ]
+
+rule Client_2://C
+  [ Fr(~LifeTime_2),
+    Fr(~N_2),
+    Fr(~T),
+    !Parties(A, C, G, S),
+    In(<C, Ticket_1, aenc{G, Key_CG, Tstart, Texpire, N_1}Key_CA >)
+  ]
+  -->
+  [ Out(<S, ~LifeTime_2, ~N_2, Ticket_1, aenc{C, ~T}Key_CG >) ]
+
+rule GrantingServ_1://G
+  let
+    Ticket_2 = aenc{C, S, ~Key_CS, ~Tstart2, ~Texpire2 }Key_GS
+  in
+  [ Fr(~Tstart2),
+    Fr(~Texpire2),
+    Fr(~Key_CS),
+    !Shared(G, S, Key_GS),
+    In(< S, LifeTime_2, N_2, Ticket_1, aenc{C, ~T}Key_CG >)]
+  -->
+  [ Out(< C, Ticket_2, aenc{S, ~Key_CS, ~Tstart2, ~Texpire2, N_2}Key_CG >) ]
+rule Client_3://C
+  [ Fr(~T2),
+    In(< C, Ticket_2, aenc{S, Key_CS, Tstart2, Texpire2, N_2}Key_CG >)
+  ]
+  -->
+  [ Out(< Ticket_2, aenc{C, ~T2 }Key_CS >)]
+rule Server_1: //S
+  [
+    In(< Ticket_2, aenc{C, T2 }Key_CS >)
+  ]
+  -->
+  [
+    Out(<aenc{T2}Key_CS>)
+  ]
+rule Client_4: //C
+  [
+    In(<aenc{T2}Key_CS>),
+    !Parties(A, C, G, S)
+  ]
+  --[ Session(C, S, <'client', Key_CS >)]->
+  []
+
+axiom Equality_Checks_Succeed: "All x y #i. Eq(x,y) @ i ==> x = y "
+
+lemma Session_Key_Setup_Possible:
+  exists-trace
+  "
+    Ex C S params #j. Session(C, S, params) @j
+     & not( Ex A #r. SK_Reveal(C,A) @r )
+     & not( Ex A G #s. SK_Reveal(A,G) @s )
+     & not( Ex G #t. SK_Reveal(G,S) @t )
+
+  "
+
+//Initially shared: K_CA, K_AG, K_GS
+end
