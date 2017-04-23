@@ -6,8 +6,11 @@ builtins: symmetric-encryption, hashing
 
 /* Registration */
 
-//functions: enc/2, dec/2
+//functions: xor/2
+
 //equations: dec(enc(m, k), k) = m
+//equations: xor( (xor(a,b) , xor(a,c) ) = a
+
 
 rule Register_SK:
     [ Fr(~SK) ]
@@ -19,6 +22,7 @@ rule Reveal_SK:
     --[ SK_Reveal(U, S)]->
     [ Out(SK)]
 
+/* REGISTRATION PHASE START */
 rule User_Reg_1: // Does it matter where I generate a fresh key? Here I dont use PW in this step,
     [   Fr(~ID), // but PW is normally already generated at this step.
         Fr(~PW),
@@ -84,7 +88,76 @@ rule Server_Reg_2:
         Server_Reg_2( IDr, fst(sdec( enc, SK)), snd(sdec( enc, SK)) )
     ]
 
+/* REGISTRATION PHASE END */
+/* AUTHENTICATION PHASE START */
+
+rule User_Auth_1:
+    let
+        A3  = h(<ID,Q2,F2>)
+        F3  = h(A3)
+        Fc  =  senc(F2,F1) // xor workaround
+        AFc =  senc(A1,F2) //xor workaround
+        V2  = h(<A2,F3>)
+        FVc = h(<F1,V2>)
+    in
+    [
+        User_Reg_2(ID, Q2, A1, F1, A2, F2)
+    ]
+    -->
+    [
+        User_Auth_1(A3,F3),
+        Out(<Fc, AFc, V2, FVc>)
+    ]
+
+rule Server_Auth_1:
+    let
+        calc_F2 = sdec(FcR, F1)
+        calc_A1 = sdec(AFcR, calc_F2)
+        calc_F1 = h(calc_A1)
+        calc_V1 = h(<calc_A1,calc_F2>)
+        calc_FVc = h(<F1, V2R>)
+    in
+    [   Fr(~R1),
+        In(<FcR, AFcR, V2R, FVcR>),
+        Server_Reg_2(ID, F1, V1),
+        !Shared_Key(U, S, SK),
+        User_Reg_2(IDg,Q2g,A1g,F1g,A2g,F2g) //g for god, used only for eq checks
+    ]
+    --[
+        Eq2( F2g, calc_F2),
+        Eq2( A1g, calc_A1),
+        Eq2( F1, calc_F1),
+        //S IS CONVINCED THAT F1 F2 A1 ARE NOT MODIFIED IF ABOVE EQ CHECKS SUCCEED
+        Eq2( V1, calc_V1),
+        // S AUTHENTICATES U
+        S_Authenticates_U(S,U, calc_V1, calc_A1, calc_F2),
+        Eq2( FVcR, calc_FVc )
+    ]->
+    [
+        Server_Auth_1(calc_F2,V2R),
+        Out( <~R1,h(<~R1,F1>)> )
+    ]
+
+rule User_Auth_2:
+    let
+        calc_hRF = h(<R1, F1>)
+        Q3 = h(<Q2, R1>)
+    in
+    [
+        In(<R1, hRF>),
+        User_Auth_1(A3,F3),
+        !Shared_Key(U, S, SK),
+        User_Reg_2(ID, Q2, A1, F1, A2, F2)
+    ]
+    --[ Eq2( hRF, calc_hRF ),
+        U_Authenticates_S(U, S, R1, F1, hRF)]->
+    [
+        User_Auth_2(Q3, A3, F3)
+    ]
+
 axiom Equality_Checks_Succeed: "All x y #i. Eq(x,y) @ i ==> x = y "
+// Eq2 is written to isolate possibility checks of Registration and Authentication phases from each other
+axiom Equality_Checks_Succeed2: "All x y #i. Eq2(x,y) @ i ==> x = y "
 
 lemma Registration_Possible:
     exists-trace
@@ -94,4 +167,18 @@ lemma Registration_Possible:
     ( Ex U S ID SK #j. Registration(U, S, SK, ID) @ #j
         &  not( Ex #r. SK_Reveal(U, S) @r ) )
     "
+
+lemma Authentication_Possible:
+    exists-trace
+    "
+    (All x y #i. Eq2(x,y) @i ==> x = y)
+    &
+    ( Ex U S calc_V1 calc_A1 calc_F2 #j. S_Authenticates_U(S,U,calc_V1,calc_A1,calc_F2) @ #j
+        & (Ex R1 F1 hRF #k. U_Authenticates_S(U,S,R1,F1,hRF) @ #k)
+        & not( Ex #r. SK_Reveal(U,S) @r ) )
+    "
+
+
+
+
 end
