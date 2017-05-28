@@ -11,6 +11,15 @@ builtins: symmetric-encryption, hashing
 //equations: dec(enc(m, k), k) = m
 //equations: xor( (xor(a,b) , xor(a,c) ) = a
 
+rule Register_PW:
+	[ Fr(~PW)]
+	-->
+	[ Pass($U, ~PW)]
+
+rule Reveal_PW:
+	[ Pass($U, ~PW)]
+	--[ PW_Reveal($U)]->
+	[ Out(~PW)]
 
 rule Register_US:
 	[ ]
@@ -22,7 +31,7 @@ rule Register_US:
 /* REGISTRATION PHASE START */
 rule User_Reg_1: // Does it matter where I generate a fresh key? Here I dont use PW in this step,
 	[   Fr(~ID), // but PW is normally already generated at this step.
-		Fr(~PW)
+		Pass( $U, ~PW)
 	]
 	-->
 	[   User_Reg_1(~ID, ~PW),
@@ -113,6 +122,7 @@ rule Server_Auth_1:
 		//seperate this maybe
 	]
 	--[
+		Answer_Req(U, S, )
 		Eq( F1, calc_F1),
 		//S IS CONVINCED THAT F1 F2 A1 ARE NOT MODIFIED IF ABOVE EQ CHECKS SUCCEED
 		Eq( V1, calc_V1),
