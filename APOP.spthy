@@ -1,87 +1,86 @@
 theory APOP
 begin
 
-
 /*
 S -> C : Hello.Timestamp
  C -> S : C.MD5(Timestamp.K_CS)
  S -> C : Success
 */
 
-functions: h/1
+builtins: hashing
+//functions: h/1
 
 rule Register_SK:
-    [ Fr(~SK)]
-    -->
-    [ !Shared_Key($S, $C, ~SK) ]
+	[ Fr(~SK)]
+	-->
+	[ !Shared_Key($S, $C, ~SK) ]
 
 rule Reveal_SK:
-    [ !Shared_Key(S, C, SK)]
-    --[ SK_Reveal(S, C) ]->
-    [ Out(SK) ]
+	[ !Shared_Key(S, C, SK)]
+	--[ SK_Reveal(S, C) ]->
+	[ Out(SK) ]
 
 rule Server_1:
-    [ Fr(~T) ]
-    -->
-    [ Out(<'Hello', ~T>),
-      Server_1(~T)
-    ]
+	[ Fr(~T) ]
+	-->
+	[ Out(<'Hello', ~T>),
+	  Server_1(~T)
+	]
 
 rule Client_1:
-    [ In(<'Hello', T>),
-      !Shared_Key(S, C, SK)
-    ]
-    -->
-    [ Out(<C,h(<T, SK>)>)]
+	[ In(<'Hello', T>),
+	  !Shared_Key(S, C, SK)
+	]
+	--[ AnswerReq(S, C, SK, T)]->
+	[ Out(<C,h(<T, SK>)>)]
 
 rule Server_2:
-    [ In( hashed ),
-      !Shared_Key(S, C, SK),
-      Server_1(T)
-    ]
-    --[ Eq( snd(hashed), h(<T, SK>) ),
-        AuthDone(S, C, SK, T)]->
-    [ Out('Success') ]
+	[ In( hashed ),
+	  !Shared_Key(S, C, SK),
+	  Server_1(T)
+	]
+	--[ Eq( snd(hashed), h(<T, SK>) ),
+		Eq( fst(hashed), C),
+		AuthDone(S, C, SK, T)]->
+	[ Out('Success') ]
 
 rule Client_2:
-    [ In('Success'),
-      !Shared_Key(S, C, SK),
-      Server_1(T) ]
-    --[ Successful(S, C, SK, T) ]->
-    []
-
-
-lemma SK_secrecy:
-    " /* It cannot be that a */
-    not(
-        Ex S C SK T #i #j.
-            Successful( S, C, SK, T ) @ #i
-        & K(SK) @ #j
-        & not( Ex #r. SK_Reveal(S, C) @r)
-    )
-    "
-
-lemma Authentication:
-    " All S C SK T #i. Successful( S, C, SK, T ) @ #i
-        ==>
-        (
-          ( Ex #j. AuthDone(S, C, SK, T) @j)
-         | (Ex #r. SK_Reveal(S, C) @ r & r < i)
-        )
-    "
-
-
-lemma session_key_setup_possible:
-    exists-trace
-    "
-    (All x y #i. Eq(x,y) @ i ==> x = y)
-    &
-    (Ex S C SK T #i. Successful(S, C, SK, T) @ #i
-        & not( Ex #j. SK_Reveal(S, C) @j )
-    )
-    "
+	[ In(x),
+	  !Shared_Key(S, C, SK),
+	  Server_1(T) ]
+	--[ Eq(x,'Success'),
+		Successful(S, C, SK, T) ]->
+	[]
 
 axiom Equality_Checks_Succeed: "All x y #i. Eq(x,y) @ i ==> x = y "
 
+lemma SK_secrecy:
+	" /* It cannot be that a */
+	not(
+		Ex S C SK T #i #j.
+			Successful( S, C, SK, T ) @ #i
+		& K(SK) @ #j
+		& not( Ex #r. SK_Reveal(S, C) @r)
+	)
+	"
 
+lemma Authentication:
+	"
+		( All S C SK T #i. AuthDone( S, C, SK, T ) @ #i
+			==>
+			 ( (Ex #r. SK_Reveal(S, C) @ r & r < i)
+				| (Ex #l. AnswerReq(S, C, SK, T) @l)
+			 )
+		)
+	"
+
+lemma session_key_setup_possible:
+	exists-trace
+	"
+	(All x y #i. Eq(x,y) @ i ==> x = y)
+	&
+	(Ex S C SK T #j. Successful(S, C, SK, T) @ #j
+		& not( Ex #r. SK_Reveal(S, C) @r )
+	)
+	"
 end
