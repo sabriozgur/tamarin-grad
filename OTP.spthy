@@ -122,7 +122,7 @@ rule Server_Auth_1:
 		//seperate this maybe
 	]
 	--[
-		Answer_Req(U, S, )
+	//	Answer_Req(U, S, )
 		Eq( F1, calc_F1),
 		//S IS CONVINCED THAT F1 F2 A1 ARE NOT MODIFIED IF ABOVE EQ CHECKS SUCCEED
 		Eq( V1, calc_V1),

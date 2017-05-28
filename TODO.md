@@ -21,15 +21,5 @@
 
 * Read RFC 2759 for (MS-)CHAPv2
 
-* Implement SIMPLE
-
-* Read RFC 2617 3261 3325 for SIMPLE
-
-* Implement Kerberos-basic
-
 * Read https://tools.ietf.org/html/draft-ietf-krb-wg-kerberos-clarifications-07 for Kerberos-basic
-
-* Read related TLS documentation
-
-* Implement TLS (version not decided yet)
 
