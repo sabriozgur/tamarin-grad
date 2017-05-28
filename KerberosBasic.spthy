@@ -81,7 +81,7 @@ rule Client_2://C
 	!Parties(A, C, G, S),
 	In(<C, Ticket_1, senc(<G, Key_CG, Tstart, Texpire, N_1>,Key_CA) >)
   ]
-  --[ Answer_CG(C, G, Key_CG) ]->
+  --[ Answer_CG(C, G, A, Key_CG) ]->
   [ Out(<S, ~LifeTime_2, ~N_2, Ticket_1, senc(<C, ~T>,Key_CG) >) ]
 
 rule GrantingServ_1://G
@@ -91,9 +91,10 @@ rule GrantingServ_1://G
   [ Fr(~Tstart2),
 	Fr(~Texpire2),
 	Fr(~Key_CS),
+	!Parties(A, C, G, S),
 	!Shared(G, S, Key_GS),
 	In(< S, LifeTime_2, N_2, Ticket_1, senc(<C, ~T>,Key_CG) >)]
-  --[ SessKeyCG(C, G, Key_CG)]->
+  --[ SessKeyCG(C, G, A, Key_CG)]->
   [ Out(< C, Ticket_2, senc(<S, ~Key_CS, ~Tstart2, ~Texpire2, N_2>,Key_CG) >) ]
 rule Client_3://C
   [ Fr(~T2),
@@ -131,26 +132,26 @@ lemma Session_Key_Setup_Possible:
 lemma CG_secrecy:
   " /* It cannot be that a */
   not(
-	  Ex C G k #i #j.
+	  Ex C G A k #i #j.
 		  /* client has set up a session key 'k' with a server'S' */
-		  SessKeyCG(C, G, k) @ #i
+		  SessKeyCG(C, G, A, k) @ #i
 		  /* and the adversary knows 'k' */
 	  & K(k) @ #j
 		  /* without having performed a long-term key reveal on 'S'. */
-	  & not(Ex A #r. SK_Reveal(A, G) @ r)
-	  & not(Ex A #r. SK_Reveal(C, A) @ r)
+	  & (not(Ex A #r. SK_Reveal(A, G) @ r) | not(Ex A #l. SK_Reveal(C, A) @ l) )
   )
   "
+  
   lemma CG_weak_auth:
 	  " /* For all session keys 'k' setup by clients with a server 'S' */
-		  ( All C G k #i. SessKeyCG(C, G, k) @ #i
+		  ( All C G A k #i. SessKeyCG(C, G, A, k) @ #i
 		  ==>
 			  /* there is a server that answered the request */
-			  ( (Ex #a. Answer_CG(C, G, k) @ a)
+			  ( (Ex #a. Answer_CG(C, G, A, k) @ a)
 			  /* or the adversary performed a long-term key reveal on 'S'
 			  before the key was setup. */
-			  | (Ex A #r. SK_Reveal(A, G) @ r & r < i)
-			  | (Ex A #l. SK_Reveal(C, A) @ l & l < i)
+			  | (Ex #r. SK_Reveal(A, G) @ r & r < i)
+			  | (Ex #l. SK_Reveal(C, A) @ l & l < i)
 			  )
 		  )
 	  "
