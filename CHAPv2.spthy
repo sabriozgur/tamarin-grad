@@ -19,110 +19,110 @@ Not sending k(A,B) at 3rd step, violates only the honest_key_setup lemma. Is thi
 functions: h/1
 
 rule Register_SK:
-    [ Fr(~SK_AB)]
-    -->
-    [ !Shared_Key($A, $B, ~SK_AB) ]
+	[ Fr(~SK_AB)]
+	-->
+	[ !Shared_Key($A, $B, ~SK_AB) ]
 
 rule Reveal_SK:
-    [ !Shared_Key(A, B, SK_AB)]
-    --[ SK_Reveal(A,B) ]->
-    [ Out(SK_AB) ]
+	[ !Shared_Key(A, B, SK_AB)]
+	--[ SK_Reveal(A,B) ]->
+	[ Out(SK_AB) ]
 
 rule Client_1: // Client is A, Server is B
-    [ !Shared_Key(A, B, SK_AB) ]
-    -->
-    [ Out(A),
-      Client_1(A, B, SK_AB)
-     ]
+	[ !Shared_Key(A, B, SK_AB) ]
+	-->
+	[ Out(A),
+	  Client_1(A, B, SK_AB)
+	 ]
 
 rule Server_1:
-    [ In(A),
-      Fr(~Nb)
-    ]
-    -->
-    [ Out(~Nb),
-      Server_1(~Nb)
-     ]
+	[ In(A),
+	  Fr(~Nb)
+	]
+	-->
+	[ Out(~Nb),
+	  Server_1(~Nb)
+	 ]
 
 rule Client_2:
-    [ In(Nb),
-      Fr(~Na),
-      Client_1(A,B,SK_AB)
-    ]
-    --[ Client_Answered(A, B, Nb, SK_AB) ]->
-    [
-      Out(<~Na,h(<SK_AB,~Na,Nb,A>)>),
-      Client_2(~Na,Nb,A,B,SK_AB)
-    ]
+	[ In(Nb),
+	  Fr(~Na),
+	  Client_1(A,B,SK_AB)
+	]
+	--[ Client_Answered(A, B, Nb, SK_AB) ]->
+	[
+	  Out(<~Na,h(<SK_AB,~Na,Nb,A>)>),
+	  Client_2(~Na,Nb,A,B,SK_AB)
+	]
 rule Server_2:
-    [ In( hashed ),
-    //In(<Na,h(<SK_AB,Na,Nb,A>)>),
-      !Shared_Key(A, B, SK_AB),
-      Server_1(Nb)
-    ]
-    --[ Eq( snd(hashed), h( <SK_AB, fst(hashed), Nb, A> ) ),
-        Auth_Nb( A, B, SK_AB, Nb),
-        Server_Answered(A, B, fst(hashed), SK_AB)
-    //Server side auth complete
-    ]->
-    [
-     Out(h(<fst(hashed), SK_AB>))
-    ]
+	[ In( hashed ),
+	//In(<Na,h(<SK_AB,Na,Nb,A>)>),
+	  !Shared_Key(A, B, SK_AB),
+	  Server_1(Nb)
+	]
+	--[ Eq( snd(hashed), h( <SK_AB, fst(hashed), Nb, A> ) ),
+		Auth_Nb( A, B, SK_AB, Nb),
+		Server_Answered(A, B, fst(hashed), SK_AB)
+	//Server side auth complete
+	]->
+	[
+	 Out(h(<fst(hashed), SK_AB>))
+	]
 
 rule Client_3:
-    [ In( hashed ),
-    //In(h(<SK_AB,Na>)),
-      Client_2(Na,Nb,A,B,SK_AB)]
-    --[ Eq( hashed, h( <Na, SK_AB> ) ), // client side auth complete
-        Auth_Na( A, B, SK_AB, Na),
-        Session(Na,Nb,A,B,SK_AB)
-        ]->
-    []
+	[ In( hashed ),
+	//In(h(<SK_AB,Na>)),
+	  Client_2(Na,Nb,A,B,SK_AB)]
+	--[ Eq( hashed, h( <Na, SK_AB> ) ), // client side auth complete
+		Auth_Na( A, B, SK_AB, Na),
+		Session(Na,Nb,A,B,SK_AB)
+		]->
+	[]
 
 axiom Equality_Checks_Succeed1: "All x y #i. Eq(x,y) @ i ==> x = y "
 //axiom Equality_Checks_Succeed2: "All x y #i. Eq2(x,y) @ i ==> x = y "
 
 lemma SK_secrecy:
-    " /* It cannot be that a */
-    not(
-        Ex Na Nb A B SK_AB #i #j.
-            Session( Na, Nb, A, B, SK_AB ) @ #i
-        & K(SK_AB) @ #j
-        & not( Ex #r. SK_Reveal(A,B) @r)
-    )
-    "
+	" /* It cannot be that a */
+	not(
+		Ex Na Nb A B SK_AB #i #j.
+			Session( Na, Nb, A, B, SK_AB ) @ #i
+		& K(SK_AB) @ #j
+		& not( Ex #r. SK_Reveal(A,B) @r)
+	)
+	"
 // Eq statements shouldnt be in lemmas ( except the honest setup lemma ) ?????
 lemma Auth_on_Na:
-    " // A&B'
-    ( All A B SK_AB Na #i. Auth_Na(A, B, SK_AB, Na) @ #i
-        ==>
-        (
-            (Ex #j. SK_Reveal(A, B) @ j & j < i)
-            | (Ex #r. Server_Answered(A, B, Na, SK_AB) @r )
-
-        )
-
-    )
-    "
+	"
+	( All A B SK_AB Na #i. Auth_Na(A, B, SK_AB, Na) @ #i
+		==>
+		( (Ex #j. SK_Reveal(A, B) @ j & j < i)
+			| ( Ex #r. Server_Answered(A, B, Na, SK_AB) @r
+			 &  (All #k. Auth_Na(A, B, SK_AB, Na) @ #k ==> #i = #k  )
+			 )
+		)
+	)
+	"
 
 lemma Auth_on_Nb:
-    "
-    ( All A B SK_AB Nb #i. Auth_Nb  (A, B, SK_AB, Nb) @ #i
-        ==>
-        (
-            (Ex #j. SK_Reveal(A, B) @ j & j < i)
-            | (Ex #r. Client_Answered(A, B, Nb, SK_AB) @r )
-        )
-    )
-    "
+	"
+	( All A B SK_AB Nb #i. Auth_Nb  (A, B, SK_AB, Nb) @ #i
+		==>
+		(
+			(Ex #j. SK_Reveal(A, B) @ j & j < i)
+			| (Ex #r. Client_Answered(A, B, Nb, SK_AB) @r
+			& (All #k. Auth_Nb  (A, B, SK_AB, Nb) @ #k ==> #i = #k))
+		)
+	)
+	"
 
 lemma session_key_setup_possible:
-    exists-trace
-    "
-    (All x y #i. Eq(x,y) @ i ==> x = y)
-    &
-    ( Ex Na Nb A B SK_AB #r. Session( Na, Nb, A, B, SK_AB ) @ #r
-        & not( Ex #j. SK_Reveal(A, B) @j )
-    )
-    "
+	exists-trace
+	"
+	(All x y #i. Eq(x,y) @ i ==> x = y)
+	&
+	( Ex Na Nb A B SK_AB #r. Session( Na, Nb, A, B, SK_AB ) @ #r
+		& not( Ex #j. SK_Reveal(A, B) @j )
+	)
+	"
 end
