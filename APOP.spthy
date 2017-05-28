@@ -69,7 +69,9 @@ lemma Authentication:
 		( All S C SK T #i. AuthDone( S, C, SK, T ) @ #i
 			==>
 			 ( (Ex #r. SK_Reveal(S, C) @ r & r < i)
-				| (Ex #l. AnswerReq(S, C, SK, T) @l)
+				| (Ex #l. AnswerReq(S, C, SK, T) @l
+				& (All #j. AuthDone( S, C, SK, T ) @ #j ==>  #i = #j )
+				)
 			 )
 		)
 	"
