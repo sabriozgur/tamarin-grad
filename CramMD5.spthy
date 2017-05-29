@@ -87,8 +87,9 @@ lemma Client_Authentication:
 	(  All A S SK T #i. Session( A, S, SK, T ) @ #i
 		==>
 		(
-			( Ex S #a. AnsweredRequest(S,SK) @ a )
-			| ( Ex S #r. SK_Reveal(A, S) @ r & r < i )
+			(( Ex #a. AnsweredRequest(S,SK) @ a )
+			   & (All #j. Session(A,S,SK,T) @ #j ==> #i = #j) )
+			| ( Ex #r. SK_Reveal(A, S) @ r & r < i )
 		)
 	)
 	"
