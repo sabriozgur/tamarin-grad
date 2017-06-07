@@ -138,10 +138,10 @@ lemma CG_secrecy:
 		  /* and the adversary knows 'k' */
 	  & K(k) @ #j
 		  /* without having performed a long-term key reveal on 'S'. */
-	  & not( (Ex #r. SK_Reveal(A, G) @ r) | (Ex #l. SK_Reveal(C, A) @ l) )
+	  & not(Ex #r. SK_Reveal(A, G) @ r) | (Ex #l. SK_Reveal(C, A) @ l) )
   )
   "
-
+  
   lemma CG_weak_auth:
 	  " /* For all session keys 'k' setup by clients with a server 'S' */
 		  ( All C G A k #i. SessKeyCG(C, G, A, k) @ #i
